@@ -1,0 +1,9 @@
+{
+"type": "FeatureCollection",
+"name": "sroad",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::3375" } },
+"features": [
+{ "type": "Feature", "properties": { "id": null, "name": "JALAN RAJA MUSA MAHADI" }, "geometry": { "type": "MultiLineString", "coordinates": [ [ [ 348346.582058911444619, 507850.777286507654935 ], [ 347877.845777941634879, 508295.394758378097322 ] ] ] } },
+{ "type": "Feature", "properties": { "id": null, "name": "JALAN RAJA MUSA MAHADI" }, "geometry": { "type": "MultiLineString", "coordinates": [ [ [ 348342.338534151029307, 507843.892384089180268 ], [ 347870.960875523800496, 508290.761522159446031 ] ] ] } }
+]
+}
