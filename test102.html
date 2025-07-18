@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width" name="viewport"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<title>Peta Lot</title>
+<link href="css/leaflet.css" rel="stylesheet"/>
+<link href="css/qgis2web.css" rel="stylesheet"/>
+<link href="css/fontawesome-all.min.css" rel="stylesheet"/>
+<style>
+    html, body, #map { height: 100%; margin: 0; }
+
+
+    #dragHandle {
+      cursor: move;
+      background: #eee;
+      padding: 5px;
+      text-align: center;
+    }
+
+#metadataPopup {
+  position: fixed;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: white;
+  padding: 20px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  z-index: 9999;
+  display: none;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+
+
+#filterContainer {
+  position: absolute; /* This ensures the element is draggable */
+  z-index: 999;
+  background: #fff;
+  padding: 20px;
+  top: 120px;
+  left: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Roboto', sans-serif;
+  width: 80%;
+  font-size: 14px;
+  max-width: 350px;
+  box-sizing: border-box;
+  display: block;
+  transition: all 0.3s ease;
+}
+
+
+#panControls {
+  position: absolute;
+  bottom: 80px; /* atas sedikit dari bottomNav */
+  right: 10px;
+  z-index: 1000;
+  background: white;
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+#panControls button {
+  display: block;
+  margin: 2px auto;
+  padding: 6px 8px;
+  border: none;
+  background-color: #004466;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#panControls button:hover {
+  background-color: #007bff;
+}
+
+
+/* Setiap elemen di dalam #filterContainer agar tersusun secara vertikal */
+#filterContainer label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+ /* CSS untuk Tanda X (tutup kotak filter) */
+    #closeFilterButton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    color: #333;
+    }
+
+    #closeFilterButton:hover {
+      color: #f00; /* Warna merah apabila hover */
+    }
+
+
+#filterContainer input,
+#filterContainer select,
+#filterContainer button {
+  display: block;   /* Pastikan elemen ditunjukkan dalam satu baris */
+  width: 100%;      /* Elemen mengisi lebar penuh kotak */
+  margin-bottom: 12px;  /* Jarak antara elemen */
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
+}
+
+    #filterContainer button.toggle-active {
+      background: #8bc34a;
+      color: white;
+    }
+    #pageHeader {
+      width: 100%;
+      background: #004466;
+      color: white;
+      padding: 10px 20px;
+      font-family: sans-serif;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    #pageHeader .logoRow {
+      
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    #pageHeader img {
+      height: 50px;
+      margin-bottom: 15px;
+    }
+    #welcomePopup {
+      position: fixed;
+      /* display will be set via JS */
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .popupContent {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      text-align: center;
+      max-width: 90%;
+      width: 300px;
+    }
+    .popupContent h3 {
+      margin-top: 0;
+    }
+    .popupContent button {
+      margin-top: 15px;
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #004466;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* Responsif untuk skrin kecil */
+ @media (max-width: 768px) {
+  #filterContainer {
+    width: 90%;
+    left: 5%;
+    max-height: 60%;
+    overflow-y: auto;
+  }
+      #pageHeader img {
+        height: 40px;
+      }
+      .popupContent {
+        width: 80%;
+      }
+      .popupContent img {
+        width: 80%;
+      }
+    }
+
+    /* Menyembunyikan filter pada skrin kecil lebih kecil dari 500px */
+    @media (max-width: 500px) {
+      #filterContainer {
+        width: 95%;
+        left: 2%;
+        top: auto;
+        bottom: 10px;
+      }
+    }
+
+
+
+
+   @media (max-width: 480px) {
+  #filterContainer {
+    padding: 15px;
+    font-size: 13px;
+    top: auto;
+    bottom: 10px;
+    left: 2.5%;
+    right: 2.5%;
+    width: 95%;
+  }
+
+  #pageHeader h2 {
+    font-size: 16px;
+  }
+
+  #pageHeader small {
+    font-size: 11px;
+  }
+
+  .popupContent {
+    padding: 20px;
+    font-size: 14px;
+  }
+
+  button {
+    font-size: 14px;
+  }
+}
+
+
+#closeFilter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  background: transparent;
+  border: none;
+  color: #333;
+}
+
+
+#currentLocationButton {
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+#currentLocationButton:hover {
+    background-color: #45a049;
+}
+
+
+#controlButtons button {
+  padding: 10px 10px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+
+#controlButtons button:hover {
+  background-color: #0056b3;
+}
+
+
+/* Bottom nav style */
+#bottomNav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #controlButtons {
+    display: none !important;
+  }
+
+  #bottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    background: #004466;
+    padding: 8px 0;
+    z-index: 1000;
+  }
+
+  #bottomNav button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #bottomNav i {
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+}
+
+
+
+.leaflet-control-north {
+  background: url('img/northarrow.png') no-repeat center;
+  background-size: 40px 40px;
+  width: 40px;
+  height: 40px;
+  opacity: 0.8;
+}
+</style>
+<style>
+.dropdown {
+  position: relative;
+  display: inline-block;
+  z-index: 99999 !important;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 99999 !important;
+}
+.dropdown:hover .dropdown-content {
+  display: block !important;
+}
+.dropdown-content a {
+  color: black;
+  padding: 10px 14px;
+  text-decoration: none;
+  display: block;
+}
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+.dropbtn {
+  padding: 10px 10px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+.dropbtn:hover {
+  background-color: #0056b3;
+}
+
+  label[for="lotInput"],
+  #lotInput {
+    display: none !important;
+  }
+
+
+
+</style>
+</head>
+<body>
+<!-- Import utama -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<script src="https://unpkg.com/proj4@2.9.2/dist/proj4.js"></script>
+<script src="https://unpkg.com/proj4leaflet"></script>
+<script src="https://cdn.jsdelivr.net/npm/terraformer@1.0.12/terraformer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/terraformer-wkt-parser@1.2.1/terraformer-wkt-parser.min.js"></script>
+<script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+<script src="https://unpkg.com/lrm-openrouteservice@latest/dist/lrm-openrouteservice.min.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/georaster"></script>
+<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+<!-- Welcome Popup -->
+<div id="welcomePopup" style="display:none;">
+<div class="popupContent">
+<img alt="Logo" src="img/logo.png" style="width: 100px; height: auto; margin-bottom: 15px;"/>
+<h3>Selamat Datang!</h3>
+<p>PETA INTERAKTIF KAMPUS POLITEKNIK UNGKU OMAR</p>
+<button id="popupButtonMasuk">Masuk</button>
+</div>
+</div>
+<!-- Header -->
+<div id="pageHeader">
+<div class="logoRow" style="display: flex;">
+<img alt="Logo" src="img/logo.png" style="width: 200px; height: auto;"/>
+<div>
+<h2 style="margin: 0; font-size: 20px;">PETA INTERAKTIF KAMPUS POLITEKNIK UNGKU OMAR</h2>
+<small style="font-size: 13px;">Jalan Raja Musa Mahadi, Politeknik Ungku Omar, 31400 Ipoh, Perak</small>
+</div>
+</div>
+</div>
+<div id="filterContainer">
+<div id="dragHandle" style="
+    
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    font-weight: bold;
+    margin-bottom: 10px;
+    cursor: move;
+    padding: 10px 30px 10px 10px;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+  ">
+<label style="margin: 0;">CARIAN BANGUNAN</label>
+<!-- Butang X tutup -->
+<button id="closeFilterButton" onclick="toggleSearch()" style="
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #888;
+      cursor: pointer;
+      z-index: 1001;
+    ">×</button>
+</div>
+<label for="layerSelector">Pilih Layer:</label><select id="layerSelector" onchange="toggleLayerFromDropdown()"><option value="">-- Pilih Layer --</option></select><label for="kategoriFilter">Nama:</label>
+<select id="kategoriFilter" onchange="enableLotSearch()">
+<option value="">-- Semua Kategori --</option>
+</select>
+<label for="lotInput">No. Lot:</label>
+<input disabled="" id="lotInput" placeholder="Contoh: 11462" type="text"/>
+<button disabled="" id="searchLotButton" onclick="highlightLot()">Cari Bangunan</button>
+<label for="nameInput">Nama:</label>
+<input id="nameInput" placeholder="Contoh: NAMA BANGUNAN" type="text"/>
+<button onclick="highlightByName()">Cari Bangunan</button>
+<button disabled="" id="clearSelectionButton" onclick="clearSelection()">Clear Selected</button>
+<button onclick="ResetAll()">Reset Semua Layer</button>
+<label for="latInput">Latitude:</label>
+<input id="latInput" placeholder="Contoh: 2.1025" type="text"/>
+<label for="lngInput">Longitude:</label>
+<input id="lngInput" placeholder="Contoh: 102.523" type="text"/>
+<button onclick="zoomToCoordinates()">Zoom Ke Koordinat</button>
+<button onclick="clearCoordinateMarker()">Clear Marker</button>
+<button onclick="downloadCSV()">Muat Turun Hasil Carian (CSV)</button>
+</div>
+<div id="controlButtons" style="margin: 5px; padding: 5px 5px;  gap: 10px; flex-wrap: wrap; background-color: #004466;">
+<div class="dropdown" style="position: relative; display: inline-block; z-index: 99999;">
+<button class="dropbtn">Menu Utama</button>
+<div class="dropdown-content" style="
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+    z-index: 99999;
+  ">
+<a href="https://www.google.com">PENGENALAN</a>
+<a href="https://www.google.com">CARTA</a>
+<a href="https://www.google.com">KONTAK</a>
+</div>
+</div>
+<style>
+.dropdown-content a {
+  color: black;
+  padding: 10px 14px;
+  text-decoration: none;
+  display: block;
+}
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+.dropbtn {
+  padding: 10px 10px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+.dropbtn:hover {
+  background-color: #0056b3;
+}
+</style>
+<button onclick="toggleSearch()">Tutup / Buka Carian</button>
+<button onclick="showCurrentLocation()">Lokasi Semasa</button>
+<button onclick="enableMeasureMode()">Measure Distance</button>
+<button onclick="disableMeasureMode()">Clear Measurement</button>
+<button onclick="zoomToFullExtent()">Zoom Full Extent</button>
+<button onclick="printMap()">Cetak Peta</button><select id="fileTypeSelector" style="margin-bottom: 10px;"><option value="shapefile">Shapefile (.zip)</option><option value="geojson">GeoJSON (.geojson/.json)</option></select><input accept=".zip" id="uploadGISFile" type="file"/>
+<input accept=".tif,.tiff" id="uploadGeoTiff" type="file"/>
+<button onclick="enableABNavigation()">Navigasi A → B</button>
+<button onclick="navigateFromCurrentLocation()">Navigasi Lokasi Semasa → B</button>
+<button onclick="resetABNavigation()">Reset Navigasi</button>
+<button onclick="addRasterLayer()">Tambah Raster Layer</button>
+<button onclick="toggleMetadata()">Info Data</button>
+<button id="toggleLegendButton" onclick="toggleLegend()">Petunjuk</button>
+<button onclick="launchAttributePopup()">Papar Jadual Atribut</button>
+</div>
+<div id="map"></div>
+<div id="panControls">
+<button onclick="panMap(0, -100)">▲</button>
+<div>
+<button onclick="panMap(-100, 0)">◄</button>
+<button onclick="panMap(100, 0)">►</button>
+</div>
+<button onclick="panMap(0, 100)">▼</button>
+</div>
+<!-- Metadata Popup -->
+<div id="metadataPopup">
+<h3>Info Data GIS</h3>
+<p><strong>Sumber:</strong> QGIS Export (Politeknik Ungku Omar)</p>
+<p><strong>Sistem Koordinat:</strong> WGS 84 (EPSG:4326)</p>
+<p><strong>Tarikh Kemaskini:</strong> April 2025</p>
+<p><strong>Format:</strong> GeoJSON</p>
+<button onclick="toggleMetadata()">Tutup</button>
+</div>
+
+<script>
+document.getElementById("fileTypeSelector").addEventListener("change", function () {
+  const selected = this.value;
+  const fileInput = document.getElementById("uploadGISFile");
+
+  if (selected === "shapefile") {
+    fileInput.accept = ".zip";
+  } else if (selected === "geojson") {
+    fileInput.accept = ".geojson,.json";
+  }
+});
+</script>
+
+
+
+
+<script>
+function addRasterLayer() {
+  const url = prompt("Masukkan URL TileLayer (contoh: https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png)");
+  if (!url) return;
+
+  const rasterLayer = L.tileLayer(url, {
+    attribution: "Sumber Raster",
+    maxZoom: 22
+  }).addTo(map);
+
+  alert("Lapisan raster telah ditambah.");
+}
+</script>
+
+<script>
+
+function populatePolygonLayersOnly() {
+  const layerSelect = document.getElementById("layerSelector");
+  if (!layerSelect) return;
+
+  layerSelect.innerHTML = '<option value="">-- Pilih Layer --</option>';
+
+  Object.keys(layerStore).forEach(name => {
+    const layer = layerStore[name];
+    if (layer && layer.toGeoJSON) {
+      const geojson = layer.toGeoJSON();
+      if (
+        geojson.features &&
+        geojson.features.length > 0 &&
+        (
+          geojson.features[0].geometry.type === "Polygon" ||
+          geojson.features[0].geometry.type === "MultiPolygon"
+        )
+      ) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.text = name;
+        layerSelect.appendChild(option);
+      }
+    }
+  });
+}
+
+
+
+function toggleSearch() {
+  const filterContainer = document.getElementById("filterContainer");
+  const isVisible = filterContainer.style.display === "block";
+ 
+  if (isVisible || filterContainer.style.display === "") {
+    filterContainer.style.display = "none";
+   
+ // Tambah reset di sini bila ditutup
+    ResetAll()
+   
+  } else {
+    filterContainer.style.display = "block";
+    filterContainer.style.top = "150px";
+
+    // Populate dropdown dengan hanya layer Polygon
+    populatePolygonLayersOnly();
+  }
+}
+
+
+
+
+
+
+
+// Fungsi untuk drag kotak filter
+function makeDraggable(element, handle) {
+  let offsetX = 0, offsetY = 0, isDragging = false;
+
+  handle.addEventListener('mousedown', dragMouseDown);
+
+  function dragMouseDown(e) {
+    e.preventDefault();
+    offsetX = e.clientX - element.getBoundingClientRect().left;
+    offsetY = e.clientY - element.getBoundingClientRect().top;
+    isDragging = true;
+    document.addEventListener('mousemove', elementDrag);
+    document.addEventListener('mouseup', stopDragging);
+  }
+
+  function elementDrag(e) {
+    if (!isDragging) return;
+    element.style.left = (e.clientX - offsetX) + "px";
+    element.style.top = (e.clientY - offsetY) + "px";
+  }
+
+  function stopDragging() {
+    isDragging = false;
+    document.removeEventListener('mousemove', elementDrag);
+    document.removeEventListener('mouseup', stopDragging);
+  }
+}
+
+// Aktifkan fungsi selepas DOM ready
+document.addEventListener("DOMContentLoaded", function () {
+  const masukBtn = document.getElementById("popupButtonMasuk");
+  masukBtn.addEventListener("click", closePopup);
+
+  const filterBox = document.getElementById("filterContainer");
+  const dragHandle = document.getElementById("dragHandle");
+  makeDraggable(filterBox, dragHandle);
+  const attributePopup = document.getElementById("attributePopup");
+  const attributeHeader = document.getElementById("attributePopupHeader");
+  makeDraggable(attributePopup, attributeHeader);
+  const attributeTableContainer = document.getElementById("attributeTableContainer");
+  const attributeTableHeader = document.getElementById("attributeTableHeader");
+  makeDraggable(attributeTableContainer, attributeTableHeader);
+
+
+});
+
+
+  const map = L.map('map', {
+    center: [2.1025, 102.523],
+    zoom: 19,
+  maxNativeZoom: 19, maxZoom: 23,
+    zoomControl: false
+
+  });
+
+
+  const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxNativeZoom: 19, maxZoom: 23,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const satellite = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles © Esri',
+    minZoom: 1,
+    maxNativeZoom: 19, maxZoom: 23
+  });
+
+  const baseMaps = {
+    "OpenStreetMap": openStreetMap,
+    "Satelit (ESRI)": satellite
+  };
+
+  const layerGroup = L.layerGroup().addTo(map);
+  const fullFeatures = [];
+  const layerStore = {};
+  const overlayMaps = {};
+
+
+  function styleFeatureLot() {
+    return {
+      color: '#228B22',
+      weight: 1,
+      fillColor: '#B0E57C',
+      fillOpacity: 0.7,
+    };
+  }
+
+  
+  function styleFeatureTandaPoint(feature, latlng) {
+    return L.circleMarker(latlng, {
+      radius: 5,
+      color: '#00008B',
+      weight: 1,
+      fillColor: '#0000FF',
+      fillOpacity: 0.7
+    });
+  }
+
+
+function handleFeature(feature, layer, layerName) {
+  feature.properties.layerName = layerName;
+  
+
+  let popup = "";
+
+  if (feature.geometry.type === "Point") {
+    popup = `
+      <strong>TANDA (Point)</strong><br>
+      ID: ${feature.properties.ID || 'N/A'}<br>
+      Koordinat: ${feature.properties.X || 'N/A'}, ${feature.properties.Y || 'N/A'}<br>
+      Mukim: ${feature.properties.mukim || 'N/A'}
+    `;
+  } else if (layerName === "building") {
+    popup = `
+      <strong>Bangunan</strong><br>
+      ID: ${feature.properties.id || 'N/A'}<br>
+      Nama: ${feature.properties.name || 'N/A'}<br>
+      Kategori: ${feature.properties.kategori || 'N/A'}<br>
+      Luas (m²): ${feature.properties.area || 'N/A'}
+    `;
+  } else {
+    // General fallback popup for any other layer
+    popup = `<strong>${layerName.toUpperCase()}</strong><br>`;
+    for (const key in feature.properties) {
+      if (feature.properties.hasOwnProperty(key)) {
+        popup += `${key}: ${feature.properties[key]}<br>`;
+      }
+    }
+  }
+  layer.bindPopup(popup);
+
+  layer.bindTooltip(
+    feature.properties.name || feature.properties.id || 'Tanpa Nama',
+    { direction: 'top', sticky: true }
+  );
+
+  layer.on('click', () => {
+    highlightFeature(feature);
+  });
+}
+
+
+
+
+let pointA = null;
+let pointB = null;
+let routingControl = null;
+let abMarkers = [];
+
+function enableABNavigation() {
+  resetABNavigation();
+  map.getContainer().style.cursor = 'crosshair';
+  alert("Klik lokasi Point A dan Point B atas peta");
+
+  map.once("click", function (e) {
+    pointA = e.latlng;
+    const markerA = L.marker(pointA).addTo(map).bindPopup("Point A").openPopup();
+    abMarkers.push(markerA);
+
+    map.once("click", function (e2) {
+      pointB = e2.latlng;
+      const markerB = L.marker(pointB).addTo(map).bindPopup("Point B").openPopup();
+      abMarkers.push(markerB);
+
+      // Routing guna OpenRouteService
+      routingControl = L.Routing.control({
+        waypoints: [pointA, pointB],
+        router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1'
+    }), // <--- ganti dengan API key anda
+        lineOptions: {
+          styles: [{ color: 'blue', weight: 4 }]
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        routeWhileDragging: false,
+        show: false
+      }).addTo(map);
+
+      map.getContainer().style.cursor = '';
+    });
+  });
+}
+
+
+function navigateFromCurrentLocation() {
+  resetABNavigation();
+  map.getContainer().style.cursor = 'crosshair';
+
+  if (!navigator.geolocation) {
+    alert("Geolocation tidak disokong oleh pelayar ini.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(function(position) {
+    pointA = L.latLng(position.coords.latitude, position.coords.longitude);
+    const markerA = L.marker(pointA).addTo(map).bindPopup("Lokasi Semasa (Point A)").openPopup();
+    abMarkers.push(markerA);
+
+    alert("Sila klik lokasi destinasi (Point B) atas peta.");
+
+    map.once("click", function(e) {
+      pointB = e.latlng;
+      const markerB = L.marker(pointB).addTo(map).bindPopup("Destinasi (Point B)").openPopup();
+      abMarkers.push(markerB);
+
+      routingControl = L.Routing.control({
+        waypoints: [pointA, pointB],
+        router: L.Routing.osrmv1({
+          serviceUrl: 'https://router.project-osrm.org/route/v1'
+        }),
+        lineOptions: {
+          styles: [{ color: 'green', weight: 5 }]
+        },
+        addWaypoints: false,
+        draggableWaypoints: false,
+        routeWhileDragging: false,
+        show: false
+      }).addTo(map);
+
+      map.getContainer().style.cursor = '';
+    });
+
+  }, function(error) {
+    alert("Gagal mendapatkan lokasi semasa.");
+    map.getContainer().style.cursor = '';
+  });
+}
+
+
+function resetABNavigation() {
+
+
+
+  // Reset dropdown dan input
+  document.getElementById("layerSelector").value = "";
+  document.getElementById("kategoriFilter").innerHTML = '<option value="">-- Semua Nama --</option>';
+  document.getElementById("nameInput").value = "";
+
+
+  pointA = null;
+  pointB = null;
+
+  abMarkers.forEach(marker => map.removeLayer(marker));
+  abMarkers = [];
+
+
+  // Buang laluan navigasi (jika ada)
+  if (routingControl) {
+    map.removeControl(routingControl);
+    routingControl = null;
+  }
+
+// Padam semua layer dari peta
+  Object.keys(layerStore).forEach(name => {
+    map.removeLayer(layerStore[name]);
+  });
+
+  // Paparkan semua layer semula
+  Object.keys(layerStore).forEach(name => {
+    map.addLayer(layerStore[name]);
+  });
+
+
+  map.closePopup();
+  map.getContainer().style.cursor = '';
+}
+
+  function highlightFeature(feature) {
+    layerGroup.clearLayers();
+
+    let highlight;
+
+    if (feature.geometry.type === "Point") {
+      const coords = feature.geometry.coordinates;
+      highlight = L.circleMarker([coords[1], coords[0]], {
+        radius: 6,
+        color: 'red',
+        weight: 2,
+        fillColor: 'yellow',
+        fillOpacity: 0.9
+      }).bindPopup(
+        'X: ' + (feature.properties.X || 'N/A') + '<br>' +
+        'Y: ' + feature.properties.Y + '<br>' +
+        'Mukim: ' + feature.properties.mukim
+      );
+   } else {
+  highlight = L.geoJSON(feature, {
+    style: { color: 'red', weight: 3, fillColor: 'yellow', fillOpacity: 0.8 },
+    onEachFeature: function (f, layer) {
+      const props = f.properties;
+      layer.bindPopup(
+        'ID: ' + (props.id ?? 'N/A') + '<br>' +
+        'Name: ' + (props.name ?? 'N/A') + '<br>' +
+        'Luas (m²): ' + (props.area ?? 'N/A') + '<br>' +
+        'Kategori: ' + (props.kategori ?? 'N/A')
+      );
+    }
+  });
+}
+
+    layerGroup.addLayer(highlight);
+    document.getElementById("clearSelectionButton").disabled = false;
+    map.fitBounds(highlight.getBounds());
+    highlight.openPopup();
+  }
+
+
+
+
+  function highlightFeatureReturn(feature) {
+  let highlight, popup = "";
+
+  if (feature.geometry.type === "Point") {
+    const coords = feature.geometry.coordinates;
+    highlight = L.circleMarker([coords[1], coords[0]], {
+      radius: 6,
+      color: 'red',
+      weight: 2,
+      fillColor: 'yellow',
+      fillOpacity: 0.9
+    });
+
+    popup = `
+      <strong>TANDA (Point)</strong><br>
+      ID: ${feature.properties.ID || 'N/A'}<br>
+      Koordinat: ${feature.properties.X || 'N/A'}, ${feature.properties.Y || 'N/A'}<br>
+      Mukim: ${feature.properties.mukim || 'N/A'}
+    `;
+  } else {
+    highlight = L.geoJSON(feature, {
+      style: { color: 'red', weight: 3, fillColor: 'yellow', fillOpacity: 0.8 }
+    });
+
+    popup = `
+      <strong>Bangunan (Polygon)</strong><br>
+      Nama: ${feature.properties.name || 'N/A'}<br>
+      Luas (m²): ${feature.properties.area || 'N/A'}<br>
+      Kategori: ${feature.properties.kategori || 'N/A'}
+
+
+    `;
+  }
+
+  highlight.bindPopup(popup);
+  return highlight;
+}
+
+
+  function highlightLot() {
+    const selectedName = document.getElementById("kategoriFilter").value.trim();
+  if (!selectedName) {
+    alert("Sila pilih nama bangunan terlebih dahulu.");
+    return;
+  }
+
+  layerGroup.clearLayers();
+  let found = false, count = 0;
+  const bounds = L.latLngBounds();
+
+  fullFeatures.forEach(f => {
+    const layer = f.layer;
+    if (!map.hasLayer(layer)) return; // Skip if layer not visible
+
+    const name = (f.feature.properties.name || '').trim();
+    if (name === selectedName) {
+      const hl = highlightFeatureReturn(f.feature);
+      layerGroup.addLayer(hl);
+      bounds.extend(hl.getBounds());
+      found = true;
+      count++;
+    }
+  });
+
+  if (found) {
+    map.fitBounds(bounds);
+    document.getElementById("clearSelectionButton").disabled = false;
+    alert(`Ditemui ${count} bangunan bernama "${selectedName}".`);
+  } else {
+    document.getElementById("clearSelectionButton").disabled = true;
+    alert("Bangunan tidak dijumpai.");
+  }
+}
+
+  function highlightByName() {
+ const input = document.getElementById("nameInput").value.trim().toLowerCase();
+  if (!input) return alert("Sila isi nama terlebih dahulu.");
+
+  layerGroup.clearLayers();
+  let found = false, count = 0;
+  const bounds = L.latLngBounds();
+
+  fullFeatures.forEach(f => {
+    const layer = f.layer;
+    if (!map.hasLayer(layer)) return;
+
+    const name = (f.feature.properties.name || '').toLowerCase();
+    if (name.includes(input)) {
+      const hl = highlightFeatureReturn(f.feature);
+      layerGroup.addLayer(hl);
+      bounds.extend(hl.getBounds());
+      found = true;
+      count++;
+    }
+  });
+
+    if (found) {
+      map.fitBounds(bounds);
+      document.getElementById("clearSelectionButton").disabled = false;
+      alert(`Ditemui ${count} hasil berdasarkan nama "${input}" di mukim ${mukimSelected}.`);
+    } else {
+      document.getElementById("clearSelectionButton").disabled = true;
+      alert("Nama tidak dijumpai.");
+    }
+  }
+
+ function clearSelection() {
+  layerGroup.clearLayers();
+  ResetAll()
+  // Tutup semua popup
+  map.closePopup();
+  document.getElementById("lotInput").value = "";
+  document.getElementById("nameInput").value = "";
+  document.getElementById("clearSelectionButton").disabled = true;
+   const lotInput = document.getElementById("lotInput");
+  const searchButton = document.getElementById("searchLotButton");
+  // Kekalkan nilai mukim yang dipilih
+  const mukimValue = document.getElementById("kategoriFilter").value;
+
+  // Kekalkan nilai layer yang dipilih
+  const layerSelector = document.getElementById("layerSelector");
+  const selectedLayer = layerSelector.value;
+
+// Hanya aktifkan semula layer jika dropdown layer ada nilai
+if (selectedLayer) {
+  Object.keys(layerStore).forEach(name => {
+    if (name === selectedLayer) {
+      if (!map.hasLayer(layerStore[name])) map.addLayer(layerStore[name]);
+    } else {
+      map.removeLayer(layerStore[name]);
+    }
+  });
+}
+
+  // Populate semula dropdown mukim ikut layer yang aktif
+  const select = document.getElementById("kategoriFilter");
+  select.innerHTML = '<option value="">-- Semua Kategori --</option>';
+  populateKategoriDropdown();
+  select.value = mukimValue; // kekalkan pilihan mukim
+
+  // Tetapkan semula keaktifan input lot dan butang carian
+  if (mukimValue) {
+    lotInput.disabled = false;
+    searchButton.disabled = false;
+  } else {
+    lotInput.disabled = true;
+    searchButton.disabled = true;
+  }
+
+  enableLotSearch();
+}
+
+  function zoomToFullExtent() {
+
+
+  // Pastikan semua layer aktif sebelum kira bounds
+  Object.keys(layerStore).forEach(name => {
+    const layer = layerStore[name];
+    if (!map.hasLayer(layer)) map.addLayer(layer);
+  });
+
+    const allBounds = L.latLngBounds();
+    
+    fullFeatures.forEach(f => {
+      const layer = f.layer;
+      if (!map.hasLayer(layer)) return; // Skip if layer not visible
+    
+      const bounds = L.geoJSON(f.feature).getBounds();
+      allBounds.extend(bounds);
+    });
+    if (allBounds.isValid()) {
+      map.fitBounds(allBounds);
+    } else {
+      alert("Tiada kawasan untuk dipaparkan.");
+    }
+     
+  // Juga buang highlight dari klik atau carian
+  layerGroup.clearLayers();
+  }
+
+
+function toggleLayer(layerName, button) {
+  const layer = layerStore[layerName];
+  if (!layer) return;
+
+  if (map.hasLayer(layer)) {
+    map.removeLayer(layer);
+    button.classList.remove('active');
+  } else {
+    map.addLayer(layer);
+    button.classList.add('active');
+  }
+   populateLayerDropdown();
+  }
+
+function populateKategoriDropdown() {
+  const selectedLayerName = document.getElementById("layerSelector").value;
+  const nameSet = new Set();
+
+  fullFeatures.forEach(f => {
+    const feature = f.feature;
+    const layer = f.layer;
+    const layerName = feature.properties.layerName;
+
+    const geomType = feature.geometry.type;
+
+    if (
+      layerName === selectedLayerName &&
+      map.hasLayer(layer) &&
+      (geomType === "Polygon" || geomType === "MultiPolygon")
+    ) {
+      const name = feature.properties.name;
+      if (name) nameSet.add(name);
+    }
+  });
+
+  const dropdown = document.getElementById("kategoriFilter");
+  dropdown.innerHTML = '<option value="">-- Semua Nama --</option>';
+  Array.from(nameSet).sort().forEach(name => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    dropdown.appendChild(option);
+  });
+}
+
+
+
+
+  function enableLotSearch() {
+    const mukimSelected = document.getElementById('kategoriFilter').value;
+    const lotInput = document.getElementById('lotInput');
+    const searchButton = document.getElementById('searchLotButton');
+    lotInput.disabled = !mukimSelected;
+    searchButton.disabled = !mukimSelected;
+    if (mukimSelected) lotInput.focus();
+  }
+
+function ResetAll() {
+  // Buang semua highlight termasuk carian
+  layerGroup.clearLayers();
+  
+  // Aktifkan semua layer dalam layerStore dan tambahkan ke peta
+  Object.keys(layerStore).forEach(name => {
+    const layer = layerStore[name];
+    if (!map.hasLayer(layer)) {
+      map.addLayer(layer);
+    }
+  });
+
+    // Tutup semua popup
+  map.closePopup();
+  // Kosongkan mukim dan pilihan layer dropdown
+  document.getElementById("kategoriFilter").value = "";
+  document.getElementById("layerSelector").value = "";
+
+  // Populate semula dropdown mukim
+  const select = document.getElementById("kategoriFilter");
+  select.innerHTML = '<option value="">-- Semua Kategori --</option>';
+  populateKategoriDropdown();
+
+  // Kemaskini dropdown "Pilih Layer" hanya untuk Polygon
+  const layerSelect = document.getElementById("layerSelector");
+  layerSelect.innerHTML = '<option value="">-- Sila Pilih Layer --</option>';
+
+  Object.keys(layerStore).forEach(name => {
+    const layer = layerStore[name];
+    if (layer && layer.toGeoJSON) {
+      const geojson = layer.toGeoJSON();
+      if (
+        geojson.features &&
+        geojson.features.length > 0 &&
+        (geojson.features[0].geometry.type === "Polygon" ||
+         geojson.features[0].geometry.type === "MultiPolygon")
+      ) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.text = name;
+        layerSelect.appendChild(option);
+      }
+    }
+  });
+
+  // Kosongkan input carian
+  document.getElementById("lotInput").value = "";
+  document.getElementById("nameInput").value = "";
+
+  // Aktifkan semula input lot jika perlu
+  enableLotSearch();
+
+
+resetABNavigation()
+populatePolygonLayersOnly();
+  // Zoom ke semua kawasan
+  zoomToFullExtent();
+}
+
+
+
+ document.getElementById("kategoriFilter").addEventListener("change", () => {
+  
+  enableLotSearch();
+
+  const selectedMukim = document.getElementById('kategoriFilter').value;
+  if (!selectedMukim) return;
+
+  const bounds = L.latLngBounds();
+  
+    fullFeatures.forEach(f => {
+      const layer = f.layer;
+      if (!map.hasLayer(layer)) return; // Skip if layer not visible
+    
+    if (f.feature.properties.mukim === selectedMukim) {
+      bounds.extend(L.geoJSON(f.feature).getBounds());
+    }
+  });
+  if (bounds.isValid()) map.fitBounds(bounds);
+});
+
+
+
+
+
+
+// Fungsi untuk memuatkan lapisan-lapisan peta
+
+function populateLayerDropdown() {
+  const dropdown = document.getElementById("layerSelector");
+  dropdown.innerHTML = '<option value="">-- Pilih Layer --</option>';
+  Object.keys(layerStore).forEach(name => {
+    if (map.hasLayer(layerStore[name])) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      dropdown.appendChild(option);
+    }
+  });
+}
+
+const layerFiles = [
+  { name: "building", file: "data/building.geojson" },
+  { name: "court", file: "data/court.geojson" },
+  { name: "parking", file: "data/parking.geojson" },
+  { name: "fieldpoly", file: "data/fieldpoly.geojson" },
+  { name: "sroad", file: "data/sroad.geojson" },
+  { name: "road", file: "data/road.geojson" },
+  { name: "river", file: "data/river.geojson" }
+];
+
+
+
+ // Definisi CRS
+        proj4.defs("EPSG:3375", "+proj=omerc +no_uoff +lat_0=4 +lonc=102.25 +alpha=323.025796466667 +gamma=323.130102361111 +k=0.99984 +x_0=804671 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
+        proj4.defs("EPSG:4390", "+proj=cass +lat_0=2.04258333333333 +lon_0=103.562758333333 +x_0=0 +y_0=0 +ellps=evrst48 +towgs84=-11,851,5,0,0,0,0 +units=m +no_defs");
+        proj4.defs("EPSG:3384", "+proj=tmerc +lat_0=0 +lon_0=115 +k=0.9996 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs");
+        proj4.defs("EPSG:4397", "+proj=cass +lat_0=1.36666666666667 +lon_0=103.833333333333 +x_0=28001.642 +y_0=38744.572 +ellps=WGS84 +units=m +no_defs");
+        proj4.defs("EPSG:3168","+proj=omerc +no_uoff +lat_0=4 +lonc=102.25 +alpha=323.0257905 +gamma=323.130102361111 +k=0.99984 +x_0=804670.24 +y_0=0 +ellps=evrst69 +towgs84=-11,851,5,0,0,0,0 +units=m +no_defs +type=crs");
+
+
+
+function loadLayers() {
+  let layersLoaded = 0;
+  const totalLayers = layerFiles.length;
+
+  layerFiles.forEach(item => {
+    fetch(item.file)
+      .then(response => response.json())
+      .then(data => {
+        // Detect CRS
+        let crs;
+        if (data.crs && data.crs.properties && data.crs.properties.name) {
+          const crsName = data.crs.properties.name;
+          if (crsName.includes("3375")) crs = "EPSG:3375";
+          else if (crsName.includes("4390")) crs = "EPSG:4390";
+          else if (crsName.includes("3384")) crs = "EPSG:3384";
+          else if (crsName.includes("4397")) crs = "EPSG:4397";
+          else if (crsName.includes("3168")) crs = "EPSG:3168";
+        }
+        if (!crs) {
+          const lowerName = item.file.toLowerCase();
+          if (lowerName.includes("3375")) crs = "EPSG:3375";
+          else if (lowerName.includes("4390")) crs = "EPSG:4390";
+          else if (lowerName.includes("3384")) crs = "EPSG:3384";
+          else if (lowerName.includes("4397")) crs = "EPSG:4397";
+          else if (lowerName.includes("3168")) crs = "EPSG:3168";
+          else crs = "EPSG:4326"; // fallback ke WGS84
+        }
+
+        // Transform koordinat jika bukan WGS84
+        if (crs !== "EPSG:4326") {
+          function transformCoords(coords) {
+            if (typeof coords[0] === 'number') {
+              return proj4(crs, 'EPSG:4326', coords);
+            }
+            return coords.map(transformCoords);
+          }
+
+          function transformGeometry(geometry) {
+            return {
+              ...geometry,
+              coordinates: transformCoords(geometry.coordinates)
+            };
+          }
+
+          data.features.forEach(feature => {
+            feature.geometry = transformGeometry(feature.geometry);
+          });
+        }
+
+        const layer = L.geoJSON(data, {
+         
+
+ style: function (feature) {
+  if (item.name === "building") {
+    return {
+      color: "#000000",      // border hitam
+      weight: 1,
+      fillColor: "#FFA500",  // oren
+      fillOpacity: 0.8
+    };
+  } else if (item.name === "parking") {
+    return {
+      color: "#0000FF",      // border biru
+      weight: 1,
+      fillColor: "#ADD8E6",  // biru muda
+      fillOpacity: 0.7
+    };
+  } else if (item.name === "fieldpoly") {
+    return {
+      color: "#006400",      // border hijau pekat
+      weight: 1,
+      fillColor: "#228B22",  // hijau pekat
+      fillOpacity: 0.7
+    };
+  } else if (item.name === "court") {
+    return {
+      color: "#008000",      // border hijau
+      weight: 1,
+      fillColor: "#90EE90",  // hijau muda
+      fillOpacity: 0.7
+    };
+  } else if (item.name === "river") {
+    return {
+      color: "#00008B",      // biru pekat
+      weight: 2,
+      fillColor: "#0000CD",  // biru medium
+      fillOpacity: 0.6
+    };
+  } else if (item.name === "sroad") {
+    return {
+      color: "#FF0000",      // merah
+      weight: 2,
+      fillColor: "#FF4500",  // oren kemerahan
+      fillOpacity: 0.7
+    };
+  } else if (item.name === "road") {
+    return {
+      color: "#FF0000",      // merah
+      weight: 2,
+      fillColor: "#FF4500",  // oren kemerahan
+      fillOpacity: 0.7
+    };
+  } else if (item.name.includes("LOT")) {
+    return styleFeatureLot(); // style default LOT
+  }
+  return undefined;
+},
+
+
+
+
+
+
+
+          pointToLayer: item.name.includes("TANDA") ? styleFeatureTandaPoint : undefined,
+          onEachFeature: function (feature, layer) {
+            feature.properties.layerName = item.name;
+            fullFeatures.push({ feature, layer });
+            handleFeature(feature, layer, item.name); // ⬅️ ini yang patut digunakan
+
+           let popup = "";
+
+if (feature.geometry.type === "Point") {
+  popup = `
+    <strong>TANDA (Point)</strong><br>
+    ID: ${feature.properties.ID || 'N/A'}<br>
+    Koordinat: ${feature.properties.X || 'N/A'}, ${feature.properties.Y || 'N/A'}<br>
+    Mukim: ${feature.properties.mukim || 'N/A'}
+  `;
+} else if (item.name === "building") {
+  popup = `
+    <strong>Bangunan</strong><br>
+    ID: ${feature.properties.id || 'N/A'}<br>
+    Nama: ${feature.properties.name || 'N/A'}<br>
+    Kategori: ${feature.properties.kategori || 'N/A'}<br>
+    Luas (m²): ${feature.properties.area || 'N/A'}
+  `;
+} else {
+  popup = `
+    <strong>Feature Polygon</strong><br>
+    Nama: ${feature.properties.name || feature.properties.name || 'N/A'}<br>
+    Luas (m²): ${feature.properties.area || feature.properties.area || 'N/A'}<br>
+    Kategori: ${feature.properties.kategori || 'N/A'}
+  `;
+}
+
+            layer.bindPopup(popup);
+            layer.bindTooltip(
+              feature.properties.id ? `Lot ${feature.properties.name}` : 'Tiada Nama bangunan',
+              { direction: 'top', sticky: true }
+            );
+
+            layer.on('click', () => {
+              highlightFeature(feature);
+            });
+          }
+        });
+
+        layerStore[item.name] = layer;
+        overlayMaps[item.name] = layer;
+        map.addLayer(layer);
+
+        const geomTypes = new Set();
+        data.features.forEach(f => geomTypes.add(f.geometry.type));
+        appendLegendEntry(item.name, geomTypes);
+
+
+
+        layersLoaded++;
+        if (layersLoaded === totalLayers) {
+          zoomToFullExtent();
+          populateLayerDropdown();
+          populateKategoriDropdown();
+          if (window.layerControl) map.removeControl(window.layerControl);
+          window.layerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+          setTimeout(() => {
+            document.getElementById("welcomePopup").style.display = "flex";
+          }, 300);
+        }
+      })
+      .catch(err => {
+        console.error("Gagal muat fail:", item.file, err);
+      });
+  });
+}
+
+// Tutup popup bila user tekan "Masuk"
+function closePopup() {
+  console.log("Tutup popup dipanggil");
+  document.getElementById("welcomePopup").style.display = "none";
+     // Move the filter container down after closing the popup
+  const filterContainer = document.getElementById("filterContainer");
+  filterContainer.style.top = "160px"; // Adjust this value as needed
+}
+
+
+// Panggil load layer bila peta siap sedia
+map.whenReady(() => {
+  loadLayers();
+  setTimeout(() => {
+    populatePolygonLayersOnly();
+  }, 1000); // Delay 1 saat selepas loadLayers
+  
+});
+
+
+function showCurrentLocation() {
+  if (!navigator.geolocation) {
+    alert("Geolocation tidak disokong oleh pelayar ini.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function (position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      const marker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+        })
+      }).addTo(map).bindPopup("Lokasi semasa anda").openPopup();
+
+      map.setView([lat, lng], 18);
+    },
+    function (error) {
+      alert("Tidak dapat mengesan lokasi semasa.");
+    }
+  );
+}
+
+
+function printMap() {
+  const filterContainer = document.getElementById("filterContainer");
+  const controlButtons = document.getElementById("controlButtons");
+  const header = document.getElementById("pageHeader");
+
+  filterContainer.style.display = "none";
+  controlButtons.style.display = "none";
+  if (header) header.style.display = "none";
+
+  window.print();
+
+  function restoreUI() {
+    filterContainer.style.display = "block";
+    controlButtons.style.display = "flex";
+    if (header) header.style.display = "block";
+  }
+
+  // Restore using event
+  window.onafterprint = restoreUI;
+
+  // Fallback if onafterprint is not triggered
+  setTimeout(restoreUI, 1500);
+}
+
+
+
+L.control.zoom({ position: 'topright' }).addTo(map);</script>
+<div id="bottomNav">
+<button onclick="toggleSearch()"><i class="fas fa-search"></i><span>Carian</span></button>
+<button onclick="showCurrentLocation()"><i class="fas fa-location-arrow"></i><span>Lokasi</span></button>
+<button onclick="zoomToFullExtent()"><i class="fas fa-expand"></i><span>Zoom</span></button>
+<button onclick="printMap()"><i class="fas fa-print"></i><span>Cetak</span></button>
+</div>
+<!-- jQuery UI for Autocomplete -->
+<link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet"/>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script><script>
+
+
+function downloadCSV() {
+  const rows = [["Nama", "Lot", "Mukim"]];
+  layerGroup.eachLayer(layer => {
+    if (!layer.feature || !layer.feature.properties) return;
+    const props = layer.feature?.properties;
+    if (props) {
+      rows.push([props.NAMA || "", props.lot_number || "", props.mukim || ""]);
+    }
+  });
+
+  if (rows.length <= 1) return alert("Tiada data dipilih.");
+
+  let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", "hasil_carian.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+
+
+L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+const north = L.control({ position: "topright" });
+north.onAdd = function (map) {
+  const div = L.DomUtil.create("div", "leaflet-control-north");
+  return div;
+};
+north.addTo(map);
+
+
+let measurementPoints = [];
+let measurementLayer = L.layerGroup().addTo(map);
+
+function enableMeasureMode() {
+  map.getContainer().style.cursor = "crosshair";
+  map.on("click", onMapClickMeasure);
+}
+
+function disableMeasureMode() {
+  map.getContainer().style.cursor = "";
+  map.off("click", onMapClickMeasure);
+  measurementPoints = [];
+  measurementLayer.clearLayers();
+}
+
+function onMapClickMeasure(e) {
+  const latlng = e.latlng;
+  measurementPoints.push(latlng);
+  L.circleMarker(latlng, { radius: 5, color: "blue" }).addTo(measurementLayer);
+
+  if (measurementPoints.length > 1) {
+    const lastIndex = measurementPoints.length - 1;
+    const line = L.polyline([measurementPoints[lastIndex - 1], measurementPoints[lastIndex]], {
+      color: "red"
+    }).addTo(measurementLayer);
+
+    const distance = measurementPoints[lastIndex - 1].distanceTo(measurementPoints[lastIndex]);
+    const midPoint = line.getCenter ? line.getCenter() : latlng;
+    L.tooltip({ permanent: true, direction: "center", className: "measure-tooltip" })
+      .setContent((distance / 1).toFixed(2) + " meter")
+      .setLatLng(midPoint)
+      .addTo(measurementLayer);
+  }
+}
+</script>
+<script>
+
+
+function populateLayerDropdown() {
+  const dropdown = document.getElementById("layerSelector");
+  dropdown.innerHTML = '<option value="">-- Pilih Layer --</option>';
+
+  Object.entries(layerStore).forEach(([name, layer]) => {
+    let hasPolygon = false;
+
+    layer.eachLayer(l => {
+      const geomType = l.feature?.geometry?.type;
+      if (geomType === "Polygon" || geomType === "MultiPolygon") {
+        hasPolygon = true;
+      }
+    });
+
+    if (hasPolygon) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      dropdown.appendChild(option);
+    }
+  });
+}
+
+
+
+  // Populate mukim dropdown after selecting a layer
+  populateKategoriDropdown();</script><script>
+map.on('overlayadd', function () {
+  populateLayerDropdown();
+});
+map.on('overlayremove', function () {
+  populateLayerDropdown();
+});
+</script>
+<script>
+
+
+
+
+
+function toggleLayerFromDropdown() {
+  const selectedLayer = document.getElementById("layerSelector").value;
+  if (!selectedLayer) return;
+
+
+  // Populate mukim dropdown based on selected layer
+  populateKategoriDropdown();
+}
+
+
+
+
+</script>
+<script>
+function toggleLegend() {
+  const legend = document.getElementById("legendBox");
+  const button = document.getElementById("toggleLegendButton");
+
+  if (legend.style.display === "block") {
+    legend.style.display = "none";
+  } else {
+    // Posisi dinamik berdasarkan butang
+    const rect = button.getBoundingClientRect();
+
+    // Sesuaikan posisi pada skrin (ambil kira scroll)
+    legend.style.left = rect.left + window.scrollX + "px";
+    legend.style.top = rect.bottom + window.scrollY + 10 + "px"; // 10px bawah butang
+    legend.style.display = "block";
+  }
+}
+</script>
+<script>
+function populateLayerDropdown() {
+  const dropdown = document.getElementById("layerSelector");
+
+  // Simpan pilihan semasa
+  const selectedValue = dropdown.value;
+
+  dropdown.innerHTML = '<option value="">-- Pilih Layer --</option>';
+
+  Object.keys(layerStore).forEach(name => {
+    if (map.hasLayer(layerStore[name])) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      dropdown.appendChild(option);
+    }
+  });
+
+  // Tetapkan semula pilihan yang dipilih
+  dropdown.value = selectedValue;
+}
+</script>
+<script>
+function toggleMetadata() {
+  const popup = document.getElementById("metadataPopup");
+  if (!popup) {
+    alert("Metadata popup tidak dijumpai.");
+    return;
+  }
+  popup.style.display = (popup.style.display === "block") ? "none" : "block";
+}
+</script>
+<script>
+function panMap(dx, dy) {
+  const currentCenter = map.getCenter();
+  const newCenter = map.project(currentCenter, map.getZoom()).add([dx, dy]);
+  map.panTo(map.unproject(newCenter, map.getZoom()));
+}
+</script>
+<script>
+let zipContent = null;
+let shapefiles = [];
+
+ // Definisi CRS
+        proj4.defs("EPSG:3375", "+proj=omerc +no_uoff +lat_0=4 +lonc=102.25 +alpha=323.025796466667 +gamma=323.130102361111 +k=0.99984 +x_0=804671 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs");
+        proj4.defs("EPSG:4390", "+proj=cass +lat_0=2.04258333333333 +lon_0=103.562758333333 +x_0=0 +y_0=0 +ellps=evrst48 +towgs84=-11,851,5,0,0,0,0 +units=m +no_defs");
+        proj4.defs("EPSG:3384", "+proj=tmerc +lat_0=0 +lon_0=115 +k=0.9996 +x_0=500000 +y_0=0 +ellps=GRS80 +units=m +no_defs");
+        proj4.defs("EPSG:4397", "+proj=cass +lat_0=1.36666666666667 +lon_0=103.833333333333 +x_0=28001.642 +y_0=38744.572 +ellps=WGS84 +units=m +no_defs");
+        proj4.defs("EPSG:3168","+proj=omerc +no_uoff +lat_0=4 +lonc=102.25 +alpha=323.0257905 +gamma=323.130102361111 +k=0.99984 +x_0=804670.24 +y_0=0 +ellps=evrst69 +towgs84=-11,851,5,0,0,0,0 +units=m +no_defs +type=crs");
+        proj4.defs("EPSG:4326","+proj=longlat +datum=WGS84 +no_defs +type=crs");
+
+
+document.getElementById('uploadGISFile').addEventListener('change', function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    const geojson = JSON.parse(event.target.result);
+
+
+// Autodetect CRS
+                let crs;
+                if (geojson.crs && geojson.crs.properties && geojson.crs.properties.name) {
+                    const crsName = geojson.crs.properties.name;
+                    if (crsName.includes("3375")) crs = "EPSG:3375";
+                    else if (crsName.includes("4390")) crs = "EPSG:4390";
+                    else if (crsName.includes("3384")) crs = "EPSG:3384";
+                    else if (crsName.includes("4397")) crs = "EPSG:4397";
+                    else if (crsName.includes("3168")) crs = "EPSG:3168";
+                    else if (crsName.includes("4326")) crs = "EPSG:4326";
+                }
+                if (!crs) {
+                    // fallback: detect based on filename
+                    const lowerName = file.name.toLowerCase();
+                    if (lowerName.includes("3375")) crs = "EPSG:3375";
+                    else if (lowerName.includes("4390")) crs = "EPSG:4390";
+                    else if (lowerName.includes("3384")) crs = "EPSG:3384";
+                    else if (lowerName.includes("4397")) crs = "EPSG:4397";
+                    else if (lowerName.includes("3168")) crs = "EPSG:3168";
+                    else if (lowerName.includes("4326")) crs = "EPSG:4326";
+                    else {
+                        alert("Gagal kesan CRS. Sila pastikan fail atau nama fail mengandungi '3375', '4390', '4326', '3384', '4397' atau '3168'.");
+                        return;
+                    }
+                }
+
+    // Tukar koordinat ke WGS84
+    function transformCoords(coords) {
+      if (typeof coords[0] === 'number') {
+        return proj4(crs, 'EPSG:4326', coords);
+      }
+      return coords.map(transformCoords);
+    }
+
+    function transformGeometry(geometry) {
+      return {
+        ...geometry,
+        coordinates: transformCoords(geometry.coordinates)
+      };
+    }
+
+    geojson.features.forEach(feature => {
+      feature.geometry = transformGeometry(feature.geometry);
+    });
+
+    const layerName = file.name.replace(/\.[^/.]+$/, ""); // buang extension fail
+    const layer = L.geoJSON(geojson, {
+  style: function (feature) {
+    return feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon"
+      ? styleFeatureLot()
+      : undefined;
+  },
+  pointToLayer: function (feature, latlng) {
+    return styleFeatureTandaPoint(feature, latlng);
+  },
+  onEachFeature: function (feature, layer) {
+        feature.properties.layerName = layerName;
+        fullFeatures.push({ feature, layer });
+        handleFeature(feature, layer, layerName);
+      }
+    });
+
+    layerStore[layerName] = layer;
+    overlayMaps[layerName] = layer;
+    map.addLayer(layer);
+
+    // Kemaskini panel dan dropdown
+    populateLayerDropdown();
+    populateKategoriDropdown();
+    
+
+    if (window.layerControl) map.removeControl(window.layerControl);
+    window.layerControl = L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+    map.fitBounds(layer.getBounds());
+    alert("GeoJSON dimuat naik dan ditambah ke peta.");
+    const geomTypes = new Set();
+    geojson.features.forEach(f => geomTypes.add(f.geometry.type));
+    appendLegendEntry(file.name, geomTypes);
+    const rect = document.getElementById("toggleLegendButton").getBoundingClientRect();
+    const legend = document.getElementById("legendBox");
+    legend.style.left = rect.left + window.scrollX + "px";
+    legend.style.top = rect.bottom + window.scrollY + 10 + "px";
+    legend.style.display = "block";
+
+
+
+  };
+
+  reader.readAsText(file);
+  
+});
+   </script>
+<script>
+let coordinateMarker = null;
+
+function zoomToCoordinates() {
+  const lat = parseFloat(document.getElementById("latInput").value);
+  const lng = parseFloat(document.getElementById("lngInput").value);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    alert("Sila masukkan koordinat yang sah.");
+    return;
+  }
+
+  if (coordinateMarker) {
+    map.removeLayer(coordinateMarker);
+  }
+
+  const latlng = L.latLng(lat, lng);
+  coordinateMarker = L.marker(latlng).addTo(map)
+    .bindPopup("Lokasi: " + lat.toFixed(5) + ", " + lng.toFixed(5))
+    .openPopup();
+
+  map.setView(latlng, 19);
+}
+
+function clearCoordinateMarker() {
+  if (coordinateMarker) {
+    map.removeLayer(coordinateMarker);
+    coordinateMarker = null;
+  }
+}
+</script>
+
+
+<script>
+document.getElementById("uploadGeoTiff").addEventListener("change", async function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const arrayBuffer = await file.arrayBuffer();
+
+  parseGeoraster(arrayBuffer).then(georaster => {
+    if (window.geoRasterLayer) {
+      map.removeLayer(window.geoRasterLayer);
+    }
+
+    window.geoRasterLayer = new GeoRasterLayer({
+      georaster: georaster,
+      opacity: 0.7,
+      pixelValuesToColorFn: values => {
+        const val = values[0]; // band 1
+        return val === 0 ? null : `rgba(${val}, ${val}, ${val}, 0.8)`;
+      },
+      resolution: 256 // nilai kecil untuk lebih detail (tetapi perlahan)
+    });
+
+    window.geoRasterLayer.addTo(map);
+    map.fitBounds(window.geoRasterLayer.getBounds());
+
+    alert("Raster GeoTIFF berjaya dipaparkan.");
+  }).catch(err => {
+    console.error("Gagal parse GeoTIFF:", err);
+    alert("Gagal memaparkan raster. Pastikan fail .tif adalah GeoTIFF bergeoreferens.");
+  });
+});
+</script>
+<div id="legendBox" style="
+  display: none;
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  font-size: 13px;
+  z-index: 99999;
+  width: 200px;
+">
+<!-- Butang Tutup Dalam Panel -->
+<button onclick="document.getElementById('legendBox').style.display='none'" style="
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: #888;
+  ">×</button>
+</div>
+<script>
+function appendLegendEntry(fileName, geomTypes) {
+  const legendBox = document.getElementById("legendBox");
+  const baseName = fileName.replace(/\.[^/.]+$/, "");
+
+  // Elak duplicate label
+  if (legendBox.innerHTML.includes(`📁 ${baseName}`)) return;
+
+  let html = `
+    <div style="margin-top: 10px;"><strong>📁 ${baseName}</strong></div>
+  `;
+
+  if (geomTypes.has("Polygon") || geomTypes.has("MultiPolygon")) {
+    html += `
+      <div>
+        <span style="display:inline-block;width:12px;height:12px;background:#B0E57C;border:1px solid #228B22;margin-right:5px;"></span>
+        ${baseName} (Polygon)
+      </div>`;
+  }
+
+  if (geomTypes.has("Point") || geomTypes.has("MultiPoint")) {
+    html += `
+      <div>
+        <span style="display:inline-block;width:12px;height:12px;background:#0000FF;border:1px solid #00008B;margin-right:5px;"></span>
+        ${baseName} (Point)
+      </div>`;
+  }
+
+  if (geomTypes.has("LineString") || geomTypes.has("MultiLineString")) {
+    html += `
+      <div>
+        <span style="display:inline-block;width:12px;height:12px;background:#FF9900;border:1px solid #CC6600;margin-right:5px;"></span>
+        ${baseName} (Line)
+      </div>`;
+  }
+
+  legendBox.innerHTML += html;
+}
+</script>
+<div id="attributeTableContainer" style="
+  display: none;
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  width: 90%;
+  max-height: 300px;
+  overflow: auto;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 0;
+  z-index: 9999;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  border-radius: 8px;
+  font-size: 13px;
+">
+<div id="attributeTableHeader" style="
+      padding: 10px;
+      background-color: #f1f1f1;
+      border-bottom: 1px solid #ccc;
+      cursor: move;
+      font-weight: bold;
+      text-align: center;
+    ">Jadual Atribut</div>
+<div style="padding: 15px;">
+<button onclick="document.getElementById('attributeTableContainer').style.display='none'" style="
+        float: right;
+        background: transparent;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #888;
+      ">×</button>
+<div id="attributeTableContent">
+<label><strong>Pilih Kolum Untuk Papar:</strong></label>
+<select id="columnFilter" multiple="" style="width: 100%; margin-bottom: 10px;"></select>
+<div id="tableArea"></div>
+</div>
+</div>
+</div>
+<div id="attributePopup" style="
+  display: none;
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 0;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  z-index: 10000;
+  width: 400px;
+  max-width: 90%;
+  font-size: 14px;
+">
+<div id="attributePopupHeader" style="
+      padding: 10px;
+      background-color: #f1f1f1;
+      border-bottom: 1px solid #ccc;
+      cursor: move;
+      font-weight: bold;
+      text-align: center;
+    ">Pilih Layer Aktif</div>
+<div style="padding: 20px;">
+<select id="activeLayerDropdown" style="width: 100%; padding: 8px; margin-bottom: 12px;">
+<option value="">-- Pilih Layer --</option>
+</select>
+<button onclick="displayAttributeTable()">Paparkan Atribut</button>
+<button onclick="document.getElementById('attributePopup').style.display='none'" style="float: right; background: none; border: none; font-size: 16px; cursor: pointer; color: #888;">×</button>
+</div>
+</div>
+</body>
+<script>
+function showAttributeTable() {
+  const selectedLayer = document.getElementById("layerSelector").value;
+  if (!selectedLayer) {
+    alert("Sila pilih layer terlebih dahulu.");
+    return;
+  }
+
+  let tableHTML = "<table border='1' style='border-collapse:collapse;width:100%'>";
+  let headerAdded = false;
+  let rowCount = 0;
+
+  fullFeatures.forEach(f => {
+    const layer = f.layer;
+    const props = f.feature.properties;
+
+    if (props.layerName === selectedLayer && map.hasLayer(layer)) {
+      if (!headerAdded) {
+        tableHTML += "<thead><tr>";
+        Object.keys(props).forEach(key => {
+          tableHTML += `<th>${key}</th>`;
+        });
+        tableHTML += "</tr></thead><tbody>";
+        headerAdded = true;
+      }
+
+      tableHTML += "<tr>";
+      Object.keys(props).forEach(key => {
+        tableHTML += `<td>${props[key]}</td>`;
+      });
+      tableHTML += "</tr>";
+      rowCount++;
+    }
+  });
+
+  if (!headerAdded) {
+    tableHTML = "<p>Tiada data untuk dipaparkan. Pastikan layer dipilih dan aktif.</p>";
+  } else {
+    tableHTML += "</tbody></table>";
+    tableHTML = `<p><strong>${rowCount}</strong> rekod dipaparkan:</p>` + tableHTML;
+  }
+
+  document.getElementById("attributeTableContent").innerHTML = tableHTML;
+  document.getElementById("attributeTableContainer").style.display = "block";
+}
+</script>
+<script>
+function displayAttributeTable() {
+  const selectedLayer = document.getElementById("activeLayerDropdown").value;
+  if (!selectedLayer) {
+    alert("Sila pilih layer terlebih dahulu.");
+    return;
+  }
+
+  let allColumns = new Set();
+
+  fullFeatures.forEach(f => {
+    const props = f.feature.properties;
+    if (props.layerName === selectedLayer) {
+      Object.keys(props).forEach(key => allColumns.add(key));
+    }
+  });
+
+  const columnFilter = document.getElementById("columnFilter");
+  columnFilter.innerHTML = '';
+  allColumns.forEach(col => {
+    const option = document.createElement("option");
+    option.value = col;
+    option.textContent = col;
+    option.selected = true;
+    columnFilter.appendChild(option);
+  });
+
+  columnFilter.onchange = () => buildTable();
+
+  buildTable();
+
+  function buildTable() {
+    const selectedCols = Array.from(columnFilter.selectedOptions).map(opt => opt.value);
+    let html = "<table border='1' style='border-collapse:collapse;width:100%'>";
+    let headerDone = false;
+    let count = 0;
+
+    fullFeatures.forEach(f => {
+      const layer = f.layer;
+      const props = f.feature.properties;
+      if (props.layerName === selectedLayer && map.hasLayer(layer)) {
+        if (!headerDone) {
+          html += "<thead><tr>";
+          selectedCols.forEach(key => {
+            html += `<th>${key}</th>`;
+          });
+          html += "</tr></thead><tbody>";
+          headerDone = true;
+        }
+        html += "<tr>";
+        selectedCols.forEach(key => {
+          html += `<td>${props[key]}</td>`;
+        });
+        html += "</tr>";
+        count++;
+      }
+    });
+
+    if (!headerDone) {
+      html = "<p>Tiada data untuk dipaparkan. Pastikan layer dipilih dan aktif.</p>";
+    } else {
+      html += "</tbody></table>";
+      html = `<p><strong>${count}</strong> rekod dipaparkan:</p>` + html;
+    }
+
+    document.getElementById("tableArea").innerHTML = html;
+  }
+
+  document.getElementById("attributeTableContainer").style.display = "block";
+  document.getElementById("attributePopup").style.display = "none";
+}
+        
+function launchAttributePopup() {
+  const dropdown = document.getElementById("activeLayerDropdown");
+  dropdown.innerHTML = '<option value="">-- Pilih Layer --</option>';
+  Object.keys(layerStore).forEach(name => {
+    if (map.hasLayer(layerStore[name])) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      dropdown.appendChild(option);
+    }
+  });
+
+  document.getElementById("attributePopup").style.display = "block";
+}
+
+
+
+function updateActiveLayerDropdown() {
+  const dropdown = document.getElementById("activeLayerDropdown");
+  const selectedValue = dropdown.value; // Simpan pilihan semasa
+  dropdown.innerHTML = '<option value="">-- Pilih Layer --</option>';
+
+  Object.keys(layerStore).forEach(name => {
+    const layer = layerStore[name];
+    if (map.hasLayer(layer)) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      dropdown.appendChild(option);
+    }
+  });
+
+  // Pilih semula jika masih tersedia
+  dropdown.value = selectedValue;
+}
+
+// Trigger apabila layer ditambah atau dibuang dari checkbox
+map.on('overlayadd', updateActiveLayerDropdown);
+map.on('overlayremove', updateActiveLayerDropdown);
+
+// Juga jalankan selepas semua layer dimuat
+map.whenReady(() => {
+  updateActiveLayerDropdown();
+});
+
+
+
+
+
+
+</script>
+</html>
